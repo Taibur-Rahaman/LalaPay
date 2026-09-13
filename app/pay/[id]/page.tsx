@@ -6,12 +6,17 @@ type PaymentLink = { id: string; title: string; amount: number; currency: string
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
 
+function createIdempotencyKey() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
   const [payment, setPayment] = useState<PaymentLink | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paying, setPaying] = useState<string | null>(null);
+  const [idempotencyKeys] = useState(() => ({ bkash: createIdempotencyKey(), nagad: createIdempotencyKey() }));
 
   useEffect(() => { params.then(({ id: value }) => setId(value)); }, [params]);
   useEffect(() => {
@@ -28,7 +33,10 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     if (!API_URL || !payment || paying) return;
     setPaying(method); setError('');
     try {
-      const response = await fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(payment.id)}/pay/${method}`, { method: 'POST' });
+      const response = await fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(payment.id)}/pay/${method}`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKeys[method] },
+      });
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error(body.message || `Unable to start ${method} payment.`);
       if (body.data?.redirectUrl) window.location.assign(body.data.redirectUrl);
