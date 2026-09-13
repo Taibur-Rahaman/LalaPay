@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
 
