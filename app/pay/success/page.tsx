@@ -1,13 +1,13 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
 
 type PaymentStatus = 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const params = useSearchParams();
   const transactionId = params.get('transaction');
   const [status, setStatus] = useState<PaymentStatus | null>(null);
@@ -71,5 +71,25 @@ export default function PaymentSuccessPage() {
         {transactionId && <p style={{ marginTop: 18, fontSize: 13, opacity: .55, wordBreak: 'break-all' }}>Transaction: {transactionId}</p>}
       </section>
     </main>
+  );
+}
+
+function LoadingPaymentStatus() {
+  return (
+    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#f6f7f9', fontFamily: 'system-ui' }}>
+      <section style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.08)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', opacity: .55 }}>LALAPAY</div>
+        <h1 style={{ margin: '16px 0 10px' }}>Checking payment status…</h1>
+        <p style={{ margin: 0, opacity: .65 }}>Please wait.</p>
+      </section>
+    </main>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingPaymentStatus />}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }
