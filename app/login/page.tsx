@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://lalapay-api.vercel.app').replace(/\/$/, '');
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,11 +14,10 @@ export default function LoginPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!API_URL) return setError('API is not configured.');
     setLoading(true); setError('');
     try {
       const response = await fetch(`${API_URL}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password }) });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.success) throw new Error(body.message || 'Login failed.');
       localStorage.setItem('lalapay_token', body.token);
       router.push('/dashboard');
