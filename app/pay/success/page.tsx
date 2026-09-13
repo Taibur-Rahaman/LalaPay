@@ -1,95 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense,useEffect,useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://lalapay-api.vercel.app').replace(/\/$/, '');
-
-type PaymentStatus = 'INITIATED' | 'PENDING' | 'SUCCESS' | 'FAILED';
-
-function PaymentSuccessContent() {
-  const params = useSearchParams();
-  const transactionId = params.get('transaction');
-  const [status, setStatus] = useState<PaymentStatus | null>(null);
-  const [message, setMessage] = useState('Checking payment status…');
-
-  useEffect(() => {
-    if (!transactionId) {
-      setMessage('Payment status is unavailable.');
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let attempts = 0;
-    const maxAttempts = 12;
-
-    const check = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/payments/${encodeURIComponent(transactionId)}`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
-        const body = await response.json().catch(() => null);
-        if (!response.ok || !body?.success) throw new Error('Unable to check payment status.');
-
-        const next = body.data?.status as PaymentStatus;
-        if (!cancelled) {
-          setStatus(next);
-          if (next === 'SUCCESS') setMessage('Payment successful');
-          else if (next === 'FAILED') setMessage('Payment failed');
-          else setMessage('Payment is being processed');
-        }
-
-        attempts += 1;
-        if (!cancelled && next !== 'SUCCESS' && next !== 'FAILED' && attempts < maxAttempts) {
-          timer = setTimeout(check, 2500);
-        }
-      } catch {
-        if (!cancelled) setMessage('Payment status is temporarily unavailable.');
-      }
-    };
-
-    void check();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [transactionId]);
-
-  const success = status === 'SUCCESS';
-  const failed = status === 'FAILED';
-
-  return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#f6f7f9', fontFamily: 'system-ui' }}>
-      <section style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.08)' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', opacity: .55 }}>LALAPAY</div>
-        <div aria-live="polite">
-          <h1 style={{ margin: '16px 0 10px' }}>{message}</h1>
-          {!success && !failed && <p style={{ margin: 0, opacity: .65 }}>Please keep this page open while the payment provider confirms the transaction.</p>}
-        </div>
-        {transactionId && <p style={{ marginTop: 18, fontSize: 13, opacity: .55, wordBreak: 'break-all' }}>Transaction: {transactionId}</p>}
-      </section>
-    </main>
-  );
-}
-
-function LoadingPaymentStatus() {
-  return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#f6f7f9', fontFamily: 'system-ui' }}>
-      <section style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.08)' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', opacity: .55 }}>LALAPAY</div>
-        <h1 style={{ margin: '16px 0 10px' }}>Checking payment status…</h1>
-        <p style={{ margin: 0, opacity: .65 }}>Please wait.</p>
-      </section>
-    </main>
-  );
-}
-
-export default function PaymentSuccessPage() {
-  return (
-    <Suspense fallback={<LoadingPaymentStatus />}>
-      <PaymentSuccessContent />
-    </Suspense>
-  );
-}
+const API_URL=(process.env.NEXT_PUBLIC_API_URL||'https://lalapay-api.vercel.app').replace(/\/$/,'');
+type Status='INITIATED'|'PENDING'|'SUCCESS'|'FAILED';
+function Content(){const p=useSearchParams(),id=p.get('transaction');const[s,setS]=useState<Status|null>(null);const[msg,setMsg]=useState('Confirming your payment…');const[tries,setTries]=useState(0);useEffect(()=>{if(!id){setMsg('Transaction reference is missing.');return}let dead=false,t:ReturnType<typeof setTimeout>|undefined;let n=0;const check=async()=>{try{const r=await fetch(`${API_URL}/api/v1/payments/${encodeURIComponent(id)}`,{cache:'no-store'}),b=await r.json().catch(()=>null);if(!r.ok||!b?.success)throw new Error();const next=b.data.status as Status;if(dead)return;setS(next);setTries(++n);setMsg(next==='SUCCESS'?'Payment successful':next==='FAILED'?'Payment failed':n>=12?'Payment is still processing':'Confirming your payment…');if(next!=='SUCCESS'&&next!=='FAILED'&&n<12)t=setTimeout(check,2500)}catch{if(!dead)setMsg('We are temporarily unable to confirm the payment. Please keep this reference.')}};void check();return()=>{dead=true;if(t)clearTimeout(t)}},[id]);const success=s==='SUCCESS',failed=s==='FAILED';return <main className="lp-page" style={shell}><section className="lp-card" style={card} aria-live="polite"><Brand/><div style={{marginTop:32,textAlign:'center'}}><div style={icon(success?'success':failed?'danger':'pending')}>{success?'✓':failed?'!':'…'}</div><h1 style={h1}>{msg}</h1><p style={muted}>{success?'Your payment has been confirmed securely.':failed?'The payment was not completed. No successful payment was recorded.':'The payment provider may take a moment to confirm the final status.'}</p>{id&&<div style={ref}><span>Transaction reference</span><strong>{id}</strong></div>}{tries>=12&&!success&&!failed&&<p style={{...muted,fontSize:12}}>You can safely return later; the transaction status can still update.</p>}</div><div style={footer}><a href="/" style={link}>Return to LalaPay</a><span>Secure payment status</span></div></section></main>}
+function Loading(){return <main className="lp-page" style={shell}><section className="lp-card" style={card}><Brand/><div style={{textAlign:'center',padding:'55px 0'}}><div style={spinner}>•</div><h1 style={h1}>Confirming payment…</h1></div></section></main>}
+export default function Page(){return <Suspense fallback={<Loading/>}><Content/></Suspense>}
+const shell={minHeight:'100vh',display:'grid',placeItems:'center',padding:'28px 16px',background:'radial-gradient(circle at top,#ede9fe 0,#f6f8fb 42%)'} as const;const card={width:'100%',maxWidth:500,padding:'30px 28px'} as const;const h1={fontSize:30,letterSpacing:'-.035em',margin:'18px 0 8px'} as const;const muted={color:'#667085',fontSize:14,lineHeight:1.6} as const;const ref={display:'grid',gap:6,marginTop:22,padding:14,borderRadius:12,background:'#f8fafc',textAlign:'left' as const,fontSize:12};const footer={display:'flex',justifyContent:'space-between',gap:10,marginTop:25,paddingTop:17,borderTop:'1px solid #eaecf0',fontSize:12,color:'#98a2b3'};const link={color:'#4f46e5',fontWeight:800,textDecoration:'none'};const icon=(kind:'success'|'danger'|'pending')=>({margin:'0 auto',width:64,height:64,borderRadius:'50%',display:'grid',placeItems:'center',background:kind==='success'?'#d1fadf':kind==='danger'?'#fee4e2':'#f4f3ff',color:kind==='success'?'#027a48':kind==='danger'?'#b42318':'#6d28d9',fontSize:28,fontWeight:900}) as const;const spinner={width:54,height:54,borderRadius:'50%',display:'grid',placeItems:'center',margin:'0 auto',background:'#f4f3ff',color:'#6d28d9',fontWeight:900,fontSize:25};function Brand(){return <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{width:34,height:34,borderRadius:10,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',color:'#fff',fontWeight:900}}>L</span><span style={{fontWeight:900,fontSize:19}}>LalaPay</span></div>}
