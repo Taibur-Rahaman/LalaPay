@@ -2,47 +2,30 @@
 
 import { useEffect, useState } from 'react';
 
-type PaymentLink = { id: string; title: string; amount: number; currency: string; description?: string | null; expiresAt?: string | null; paymentMethods: ('bkash' | 'nagad')[]; status: string };
+type PaymentLink = { id:string; title:string; amount:number; currency:string; description?:string|null; expiresAt?:string|null; paymentMethods:('bkash'|'nagad')[]; status:string };
+const API_URL=(process.env.NEXT_PUBLIC_API_URL||'https://lalapay-api.vercel.app').replace(/\/$/,'');
+const key=()=>typeof crypto!=='undefined'&&'randomUUID'in crypto?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://lalapay-api.vercel.app').replace(/\/$/, '');
-
-function createIdempotencyKey() {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+export default function PaymentPage({params}:{params:Promise<{id:string}>}){
+ const [id,setId]=useState(''),[payment,setPayment]=useState<PaymentLink|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[paying,setPaying]=useState<string|null>(null),[keys]=useState(()=>({bkash:key(),nagad:key()}));
+ useEffect(()=>{params.then(({id:value})=>setId(value));},[params]);
+ useEffect(()=>{if(!id)return;setLoading(true);fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(id)}`,{cache:'no-store',headers:{Accept:'application/json'}}).then(async r=>{if(r.status===404)throw new Error('This payment link no longer exists.');if(!r.ok)throw new Error('We could not load this payment request.');return r.json()}).then(b=>{if(!b.success)throw new Error(b.message||'Unable to load payment.');setPayment(b.data)}).catch(e=>setError(e instanceof Error?e.message:'Unable to load payment.')).finally(()=>setLoading(false))},[id]);
+ async function pay(method:'bkash'|'nagad'){if(!payment||paying)return;setPaying(method);setError('');try{const r=await fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(payment.id)}/pay/${method}`,{method:'POST',headers:{'Idempotency-Key':keys[method],Accept:'application/json'}});const b=await r.json().catch(()=>({}));if(!r.ok||!b.success)throw new Error(b.message||`Unable to start ${method} payment.`);if(!b.data?.redirectUrl)throw new Error('The payment provider did not return a secure checkout URL.');window.location.assign(b.data.redirectUrl)}catch(e){setError(e instanceof Error?e.message:'Payment could not be started.');setPaying(null)}}
+ if(loading)return <main className="lp-page" style={shell}><section className="lp-card" style={card}><div className="skeleton" style={{height:14,width:90}}/><div className="skeleton" style={{height:34,width:'75%',marginTop:18}}/><div className="skeleton" style={{height:100,marginTop:24}}/></section></main>;
+ if(error&&!payment)return <main className="lp-page" style={shell}><section className="lp-card" style={card}><Brand/><div style={icon('danger')}>!</div><h1 style={h1}>Payment unavailable</h1><p style={muted}>{error}</p><a href="/" style={link}>Go to LalaPay</a></section></main>;
+ if(!payment)return null;
+ const expired=payment.status==='EXPIRED', inactive=payment.status==='INACTIVE';
+ return <main className="lp-page" style={shell}><section className="lp-card" style={card} aria-labelledby="payment-title"><Brand/><div style={{marginTop:24}}><div style={eyebrow}>Secure payment request</div><h1 id="payment-title" style={h1}>{payment.title}</h1>{payment.description&&<p style={{...muted,lineHeight:1.65}}>{payment.description}</p>}</div><div style={amountBox}><span style={muted}>Total to pay</span><strong style={{fontSize:36,letterSpacing:'-.04em'}}>{payment.currency} {payment.amount.toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>{(expired||inactive)?<div role="alert" style={state('danger')}><strong>{expired?'Payment link expired':'Payment link unavailable'}</strong><span>{expired?'This payment request is no longer accepting payments.':'The merchant has disabled this payment request.'}</span></div>:<><h2 style={{fontSize:15,margin:'0 0 10px'}}>Choose how to pay</h2><div style={{display:'grid',gap:12}}>{payment.paymentMethods.map(method=><button key={method} aria-label={`Pay with ${method==='bkash'?'bKash':'Nagad'}`} onClick={()=>pay(method)} disabled={!!paying} style={providerButton}>{paying===method?<><span>Opening secure checkout…</span><span>›</span></>:<><span><b>{method==='bkash'?'bKash':'Nagad'}</b><small style={{display:'block',fontWeight:500,opacity:.65,marginTop:3}}>Secure mobile payment</small></span><span style={{fontSize:20}}>→</span></>}</button>)}</div>{error&&<div role="alert" style={{...state('danger'),marginTop:14}}><strong>Payment could not start</strong><span>{error}</span></div>}</>}<div style={footer}><span>🔒 Secure checkout</span><span>Powered by <b>LalaPay</b></span></div></section></main>;
 }
-
-export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
-  const [id, setId] = useState('');
-  const [payment, setPayment] = useState<PaymentLink | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [paying, setPaying] = useState<string | null>(null);
-  const [idempotencyKeys] = useState(() => ({ bkash: createIdempotencyKey(), nagad: createIdempotencyKey() }));
-
-  useEffect(() => { params.then(({ id: value }) => setId(value)); }, [params]);
-  useEffect(() => {
-    if (!id) return;
-    fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(id)}`, { cache: 'no-store' })
-      .then(async (r) => { if (r.status === 404) throw new Error('Payment link not found.'); if (!r.ok) throw new Error('Unable to load payment link.'); return r.json(); })
-      .then((body) => { if (!body.success) throw new Error('Unable to load payment link.'); setPayment(body.data); })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Unable to load payment link.'))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  async function pay(method: 'bkash' | 'nagad') {
-    if (!payment || paying) return;
-    setPaying(method); setError('');
-    try {
-      const response = await fetch(`${API_URL}/api/v1/payment-links/${encodeURIComponent(payment.id)}/pay/${method}`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKeys[method] } });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.success) throw new Error(body.message || `Unable to start ${method} payment.`);
-      if (body.data?.redirectUrl) window.location.assign(body.data.redirectUrl); else throw new Error('Payment provider did not return a redirect URL.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Payment could not be started.'); setPaying(null); }
-  }
-
-  if (loading) return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'system-ui' }}>Loading payment...</main>;
-  if (error && !payment) return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, fontFamily: 'system-ui' }}><section><h1>Payment unavailable</h1><p>{error}</p></section></main>;
-  if (!payment) return null;
-
-  const expired = payment.status === 'EXPIRED';
-  return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#f6f7f9', fontFamily: 'system-ui' }}><section style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 20, padding: 28, boxShadow: '0 12px 40px rgba(0,0,0,.08)' }}><div style={{ marginBottom: 24 }}><div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .55 }}>LalaPay</div><h1 style={{ margin: '10px 0 8px', fontSize: 28 }}>{payment.title}</h1>{payment.description && <p style={{ margin: 0, lineHeight: 1.6, opacity: .7 }}>{payment.description}</p>}</div><div style={{ padding: 20, borderRadius: 14, background: '#f6f7f9', marginBottom: 22 }}><div style={{ fontSize: 13, opacity: .6 }}>Amount to pay</div><div style={{ marginTop: 4, fontSize: 34, fontWeight: 800 }}>{payment.currency} {payment.amount.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>{expired ? <div style={{ padding: 14, borderRadius: 12, background: '#fff1f1', color: '#b42318', fontWeight: 600 }}>This payment link has expired.</div> : <><div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Choose a payment method</div><div style={{ display: 'grid', gap: 10 }}>{payment.paymentMethods.map((method) => <button key={method} onClick={() => pay(method)} disabled={!!paying} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1px solid #ddd', background: '#fff', textAlign: 'left', fontSize: 16, fontWeight: 700, cursor: paying ? 'wait' : 'pointer' }}>{paying === method ? 'Opening secure checkout…' : method === 'bkash' ? 'bKash' : 'Nagad'}<span style={{ float: 'right', fontSize: 12, opacity: .5, fontWeight: 500 }}>{paying === method ? '' : 'Pay now'}</span></button>)}</div>{error && <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: '#fff1f1', color: '#b42318', fontSize: 13 }}>{error}</div>}<p style={{ margin: '16px 0 0', fontSize: 12, lineHeight: 1.5, opacity: .5 }}>Secure payment processing by LalaPay.</p></>}</section></main>;
-}
+const shell={minHeight:'100vh',display:'grid',placeItems:'center',padding:'28px 16px',background:'radial-gradient(circle at top,#ede9fe 0,#f6f8fb 42%)',fontFamily:'inherit'} as const;
+const card={width:'100%',maxWidth:500,padding:'30px 28px',background:'#fff'} as const;
+const h1={fontSize:30,lineHeight:1.15,letterSpacing:'-.035em',margin:'8px 0 8px'} as const;
+const muted={color:'#667085',fontSize:14} as const;
+const eyebrow={fontSize:11,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase' as const,color:'#6d28d9'};
+const amountBox={display:'grid',gap:4,padding:'20px',margin:'24px 0',borderRadius:16,background:'#f5f3ff',border:'1px solid #e9d5ff'} as const;
+const providerButton={display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',padding:'16px 17px',borderRadius:14,border:'1px solid #d0d5dd',background:'#fff',color:'#101828',textAlign:'left' as const,fontSize:16,fontWeight:800,minHeight:68} as const;
+const footer={display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap' as const,marginTop:22,paddingTop:18,borderTop:'1px solid #eaecf0',fontSize:11,color:'#98a2b3'};
+const link={display:'inline-block',marginTop:10,color:'#4f46e5',fontWeight:800,textDecoration:'none'} as const;
+const state=(kind:'danger'|'success')=>({display:'grid',gap:5,padding:15,borderRadius:13,background:kind==='danger'?'#fff1f1':'#ecfdf3',color:kind==='danger'?'#b42318':'#027a48',fontSize:14}) as const;
+const icon=(kind:'danger')=>({width:42,height:42,borderRadius:'50%',display:'grid',placeItems:'center',background:kind==='danger'?'#fee4e2':'#d1fadf',color:'#b42318',fontWeight:900,fontSize:20}) as const;
+function Brand(){return <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{width:34,height:34,borderRadius:10,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',color:'#fff',fontWeight:900}}>L</span><span style={{fontWeight:900,fontSize:19,letterSpacing:'-.03em'}}>LalaPay</span></div>}
