@@ -1,32 +1,5 @@
 'use client';
-
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://lalapay-api.vercel.app').replace(/\/$/, '');
-
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setLoading(true); setError('');
-    try {
-      const response = await fetch(`${API_URL}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email, password }) });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.success) throw new Error(body.message || 'Login failed.');
-      localStorage.setItem('lalapay_token', body.token);
-      router.push('/dashboard');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Login failed.'); }
-    finally { setLoading(false); }
-  }
-
-  return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#f6f7f9', fontFamily: 'system-ui' }}><form onSubmit={submit} style={{ width: '100%', maxWidth: 420, background: '#fff', padding: 30, borderRadius: 20, boxShadow: '0 12px 40px rgba(0,0,0,.08)' }}><div style={{ fontWeight: 800, fontSize: 22 }}>LalaPay</div><h1>Merchant Login</h1><label>Email<input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" required style={inputStyle} /></label><label>Password<input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete="current-password" required style={inputStyle} /></label>{error && <p style={{ color: '#b42318' }}>{error}</p>}<button disabled={loading} style={buttonStyle}>{loading ? 'Signing in…' : 'Sign in'}</button><p>New merchant? <a href="/register">Create an account</a></p></form></main>;
-}
-
-const inputStyle = { display: 'block', width: '100%', boxSizing: 'border-box' as const, margin: '7px 0 16px', padding: '12px 13px', border: '1px solid #ddd', borderRadius: 10, fontSize: 16 };
-const buttonStyle = { width: '100%', padding: 13, border: 0, borderRadius: 10, fontWeight: 700, fontSize: 16, cursor: 'pointer' };
+import {FormEvent,useState} from 'react';import {useRouter} from 'next/navigation';
+const API_URL=(process.env.NEXT_PUBLIC_API_URL||'https://lalapay-api.vercel.app').replace(/\/$/,'');
+export default function LoginPage(){const router=useRouter();const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);async function submit(e:FormEvent){e.preventDefault();setLoading(true);setError('');try{const r=await fetch(`${API_URL}/api/v1/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({email,password})}),b=await r.json().catch(()=>({}));if(!r.ok||!b.success)throw new Error(b.message||'Login failed.');if(!b.data?.token)throw new Error('Login succeeded but no session token was returned.');localStorage.setItem('lalapay_token',b.data.token);router.push('/dashboard')}catch(e){setError(e instanceof Error?e.message:'Login failed.')}finally{setLoading(false)}}return <main style={shell}><form className="lp-card" onSubmit={submit} style={card}><Brand/><h1 style={h1}>Welcome back</h1><p style={muted}>Sign in to manage your LalaPay payment links.</p><label>Email<input className="lp-input" value={email} onChange={e=>setEmail(e.target.value)} type="email" autoComplete="email" required/></label><label style={{display:'block',marginTop:14}}>Password<input className="lp-input" value={password} onChange={e=>setPassword(e.target.value)} type="password" autoComplete="current-password" required/></label>{error&&<p role="alert" style={{color:'#b42318',fontSize:13}}>{error}</p>}<button className="lp-btn" disabled={loading} style={{width:'100%',marginTop:8}}>{loading?'Signing in…':'Sign in'}</button><p style={muted}>New merchant? <a href="/register">Create an account</a></p></form></main>}
+const shell={minHeight:'100vh',display:'grid',placeItems:'center',padding:20,background:'radial-gradient(circle at top,#ede9fe,#f6f8fb 50%)'} as const;const card={width:'100%',maxWidth:430,padding:28} as const;const h1={fontSize:30,letterSpacing:'-.04em',margin:'22px 0 5px'} as const;const muted={fontSize:13,color:'#667085',lineHeight:1.6} as const;function Brand(){return <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{width:36,height:36,borderRadius:11,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',color:'#fff',fontWeight:900}}>L</span><strong style={{fontSize:20}}>LalaPay</strong></div>}
