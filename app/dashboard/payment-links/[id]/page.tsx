@@ -1,0 +1,17 @@
+'use client';
+
+import { useEffect,useState } from 'react';
+import { useParams,useRouter } from 'next/navigation';
+
+const API_URL=(process.env.NEXT_PUBLIC_API_URL||'https://lalapay-api.vercel.app').replace(/\/$/,'');
+const money=(n:unknown)=>`৳${Number(n||0).toLocaleString('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const labels:Record<string,string>={ACTIVE:'Active',INACTIVE:'Inactive',EXPIRED:'Expired',SUCCESS:'Success',PENDING:'Pending',FAILED:'Failed',INITIATED:'Initiated'};
+
+export default function PaymentLinkDetailPage(){
+ const router=useRouter();const params=useParams<{id:string}>();const[data,setData]=useState<any>(null);const[error,setError]=useState('');const[loading,setLoading]=useState(true);
+ useEffect(()=>{const token=localStorage.getItem('lalapay_token');if(!token){router.push('/login');return}fetch(`${API_URL}/api/v1/merchant/payment-links/${params.id}`,{headers:{Authorization:`Bearer ${token}`}}).then(async r=>{const b=await r.json();if(!r.ok||!b.success)throw new Error(b.message||'Payment link not found');setData(b.data)}).catch(e=>setError(e instanceof Error?e.message:'Unable to load payment link')).finally(()=>setLoading(false))},[params.id,router]);
+ if(loading)return <main className="lp-page" style={{minHeight:'100vh',padding:24}}><div className="lp-card" style={{maxWidth:900,height:240,margin:'0 auto'}}/></main>;
+ if(error)return <main className="lp-page" style={{minHeight:'100vh',padding:24}}><div className="lp-card" style={{maxWidth:700,margin:'0 auto',padding:24}}><h1>Payment link</h1><p>{error}</p><button className="lp-btn" onClick={()=>router.push('/dashboard')}>Back to dashboard</button></div></main>;
+ const s=data.statistics;
+ return <main className="lp-page" style={{minHeight:'100vh',padding:'24px 16px'}}><div style={{maxWidth:1000,margin:'0 auto'}}><button className="lp-btn secondary" onClick={()=>router.push('/dashboard')}>← Dashboard</button><div className="lp-card" style={{padding:24,marginTop:16}}><div style={{display:'flex',justifyContent:'space-between',gap:15,flexWrap:'wrap'}}><div><h1 style={{margin:'0 0 7px'}}>{data.link.title}</h1><p style={{margin:0,color:'#667085'}}>Payment link ID: {data.link.id}</p></div><strong style={{fontSize:28}}>{money(data.link.amount)}</strong></div><div style={{marginTop:18,color:'#667085'}}>{data.link.description||'No description'} · {data.link.paymentMethods.join(' · ')} · {labels[data.link.status]||data.link.status}</div><div style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:10,marginTop:22}}>{[['Total payments',s.total_payments],['Successful',s.successful_payments],['Pending',s.pending_payments],['Failed',s.failed_payments],['Collected',money(s.total_collected)]].map(([a,b])=><div className="lp-card" style={{padding:14}} key={String(a)}><small style={{color:'#667085'}}>{a}</small><strong style={{display:'block',fontSize:20,marginTop:5}}>{b}</strong></div>)}</div></div><div className="lp-card" style={{padding:24,marginTop:18}}><h2 style={{marginTop:0}}>Payments</h2>{!data.transactions?.length?<p style={{color:'#667085'}}>No payments yet.</p>:data.transactions.map((t:any)=><div key={t.id} style={{borderTop:'1px solid #eaecf0',padding:'13px 0',display:'flex',justifyContent:'space-between',gap:12}}><div><strong>{money(t.amount)}</strong><div style={{fontSize:12,color:'#667085'}}>{t.provider} · {new Date(t.created_at).toLocaleString()}</div></div><strong>{labels[t.status]||t.status}</strong></div>)}</div></div></main>
+}
