@@ -1,13 +1,1 @@
-export default function HomePage() {
-  return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: 48, fontFamily: 'Arial, sans-serif' }}>
-      <h1>LalaPay</h1>
-      <p>Payment links for Bangladesh businesses.</p>
-      <p>Supported payment methods: bKash and Nagad.</p>
-      <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-        <a href="/login">Merchant Login</a>
-        <a href="/register">Create Account</a>
-      </div>
-    </main>
-  );
-}
+export default function HomePage(){return <main style={{minHeight:'100vh',padding:'32px 20px',display:'grid',placeItems:'center',background:'radial-gradient(circle at top,#ede9fe,#f6f8fb 48%)'}}><section style={{width:'100%',maxWidth:980,textAlign:'center'}}><div style={{display:'inline-flex',alignItems:'center',gap:10,fontWeight:900,fontSize:22}}><span style={{width:40,height:40,borderRadius:12,display:'grid',placeItems:'center',background:'linear-gradient(135deg,#7c3aed,#4f46e5)',color:'#fff'}}>L</span>LalaPay</div><h1 style={{fontSize:'clamp(42px,8vw,76px)',lineHeight:.98,letterSpacing:'-.06em',maxWidth:850,margin:'34px auto 18px'}}>Payment links made simple.</h1><p style={{fontSize:18,lineHeight:1.6,color:'#667085',maxWidth:650,margin:'0 auto'}}>Create a secure payment link and accept bKash or Nagad without building a checkout yourself.</p><div style={{display:'flex',justifyContent:'center',gap:12,flexWrap:'wrap',marginTop:30}}><a className="lp-btn" href="/register" style={{textDecoration:'none'}}>Create merchant account</a><a className="lp-btn secondary" href="/login" style={{textDecoration:'none'}}>Merchant login</a></div><div style={{display:'flex',justifyContent:'center',gap:12,flexWrap:'wrap',marginTop:24,color:'#667085',fontSize:13}}><span className="lp-card" style={{padding:'9px 13px'}}>✓ bKash</span><span className="lp-card" style={{padding:'9px 13px'}}>✓ Nagad</span><span className="lp-card" style={{padding:'9px 13px'}}>✓ Secure hosted checkout</span></div></section></main>}
